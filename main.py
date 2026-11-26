@@ -1,36 +1,31 @@
-import requests
-import os
+from PySide6.QtUiTools import QUiLoader
+from PySide6.QtWidgets import QApplication, QTextEdit, QPushButton, QCheckBox, QComboBox
+from PySide6.QtCore import QFile, QIODevice
+import sys
+from downloader import downloader
 
-def download(url, path, chunk_size=64 * 1024):
-    with requests.get(url, stream=True) as r:
-        r.raise_for_status()
-        with open(path, "wb") as f:
-            for chunk in r.iter_content(chunk_size=chunk_size):
-                f.write(chunk)
+def run_downloader():
+    modid = window.findChild(QTextEdit,"mod_id_entry").toPlainText()
+    mod_name = window.findChild(QTextEdit,"mod_name_entry").toPlainText()
 
+    downloader(modid,mod_name)
 
-ID = input("Enter the Mod ID")
-modname = input("Enter the Mod Name")
+app = QApplication(sys.argv)
 
-url = f"https://api.modrinth.com/v2/project/{ID}/version?"
+ui_file_name = "main.ui"
+ui_file = QFile(ui_file_name)
+if not ui_file.open(QIODevice.ReadOnly):
+    print(f"Cannot open {ui_file_name}: {ui_file.errorString()}")
+    sys.exit(-1)
+loader = QUiLoader()
+window = loader.load(ui_file)
 
-resp = requests.get(url=url)
-data = resp.json()
+ui_file.close()
+if not window:
+    print(loader.errorString())
+    sys.exit(-1)
+window.show()
 
-name  = [v["name"] for v in data]
-urls  = [
-    f["url"]
-    for v in data
-    for f in v["files"]
-]
+window.findChild(QPushButton,"download_button").pressed.connect(run_downloader)
 
-x = 0
-for i in urls:
-    print(urls[x])
-    if os.path.isdir(f"./mods/{modname}"):
-        download(urls[x], f"./mods/{modname}/{name[x]}")
-    else:
-        os.makedirs(f"./mods/{modname}")
-        download(urls[x], f"./mods/{modname}/{name[x]}")
-    x = x + 1
-
+sys.exit(app.exec())
